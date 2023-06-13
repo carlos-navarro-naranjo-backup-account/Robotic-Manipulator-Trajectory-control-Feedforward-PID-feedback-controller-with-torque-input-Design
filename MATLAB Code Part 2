@@ -1,0 +1,88 @@
+% A9 Sample Code
+% This code simulates the motion of a single-joint robot
+clc
+clear
+
+% Define parameters for the equation of motion 
+L_1= 3;
+L_2= 2;
+m = 1;      % total mass of the link
+g = 9.8;   % gravitational acceleration
+kp = 10 ;      % proportional gain
+kd = 5;      % derivative gain
+ki = 0.2 ;      % integral gain
+
+% Define simulation parameters
+t_f = 5;   % total time (i.e., total time = n*h)
+h = 0.1;   % step size
+n = (t_f/h)+1;  % total number of iterations
+t = [0:h:5];
+
+th = zeros(2,n);    % initialize the space to store position data
+dth = zeros(2,n);   % initialize the space to store velocity data
+ddth= zeros(2,n);   % initialize the space to store acceleration data
+integral_term= zeros(2,n); %initialize the space to store the integral of the position error
+tau= zeros(2,n);   % initialize the space to store acceleration data
+
+th(:,1) = [1, 1]';      % initial position
+dth(:,1) = [0, 0]';         % initial velocity
+ddth(:,1) = [0, 0]';        % initial acceleration 
+
+% Calculate the acceleration given torque and parameters
+% This is the forward dynamics problem. 
+
+for i = 2:n 
+    dth(:,i) = dth(:,i-1)+ddth(:,i-1)*h; % numerical integration of acc. 
+    th(:,i) = th(:,i-1)+dth(:,i-1)*h;     % numerical integration of vec.
+    integral_term(:,i) = (integral_term(:,i-1) + (([t(i), 0]')-th(:,i-1))*h);     % numerical integration of vec. 
+    ddth(:,i) = (kd*([1, 0]'-dth(:,i)))+(kp*([t(i), 0]'-th(:,i)))+(ki*(integral_term(:,i))); % calculate acc. from dynamic equation
+    tau(:,i) = (M(th(:,i))*ddth(:,i))+ V(th(:,i),dth(:,i))+ G(th(:,i));   % torque provided
+end
+disp(th)
+theta_d= [t;zeros(1,n)];
+hold on
+plot(t, th(1,:), "r-")
+plot(t,th(2,:), "k-")
+plot(t, theta_d(1,:), "g-.")
+plot(t, theta_d(2,:), "m-.")
+xlabel('time (t)')
+ylabel('\theta: joint angles in radian')
+hold off
+
+legend({'theta_1(t)', 'theta_2(t)', 'theta_d1(t)',  'theta_d2(t)'}, 'Location', 'northeast', 'NumColumns', 1)
+figure
+hold on
+plot(t, tau(1,:), "r-")
+plot(t,tau(2,:), "k-")
+xlabel('time (t)')
+ylabel('\torque: torques obtained from the controller')
+hold off
+
+legend({'torque_1(t)', 'torque_2(t)'}, 'Location', 'northeast', 'NumColumns', 1)
+function answer = M(angle)
+L_1= 3;
+L_2= 2;
+m = 1;      % total mass of the link
+answer = [(L_2.^(2)*m)+(2*L_1*L_2*m*cos(angle(2)))+((L_1.^(2))*(m+m))       (L_2.^(2)*m)+(L_1*L_2*m*cos(angle(2)));
+
+          (L_2.^(2)*m)+(L_1*L_2*m*cos(angle(2)))                                      ((L_2.^(2))*m) ];
+end
+
+function answerr = V(angle,dangle)
+L_1= 3;
+L_2= 2;
+m = 1;      % total mass of the link
+answerr = [(-m*L_1*L_2*sin(angle(2))*(dangle(2)^2))-(2*m*L_1*L_2*sin(angle(2))*dangle(1)*dangle(2));
+          
+          m*L_1*L_2*sin(angle(2))*(dangle(1)^(2)) ];
+end
+
+function answerrr = G(angle)
+L_1= 3;
+L_2= 2;
+m = 1;      % total mass of the link)
+g = 9.8;   % gravitational acceleration
+answerrr = [m*L_2*g*cos(angle(1)+angle(2))+ ((m+m)*L_1*g*cos(angle(1)));
+        
+            m*L_2*g*cos(angle(1)+angle(2)) ];
+end
